@@ -6,7 +6,11 @@
             "command": "/usr/bin/g++",
             "args": [
                 "-g",
+                "-pthread",
+                "-Wall",
+                "-std=c++11",
                 "${file}",
+                "utils.o",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"
             ],

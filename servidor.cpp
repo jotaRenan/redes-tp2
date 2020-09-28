@@ -87,7 +87,6 @@ int main(int argc, char **argv)
 
         if (command == "add")
         {
-            // todo add
             string hostname, ip;
             cin >> hostname >> ip;
             dns_table.insert(std::pair<std::string, std::string>(hostname, ip));
@@ -106,22 +105,25 @@ int main(int argc, char **argv)
             {
                 for (auto const &con_tuple : connections)
                 {
-                    char buffer[BUFSZ];
-                    //enviar requisicao pra cada socket perguntando ip
-                    // se achar, add na dns_table
+                    cout << "Buscando externamente\n";
+
                     int sockfd = std::get<0>(con_tuple);
                     struct sockaddr_storage *storage = std::get<1>(con_tuple);
-                    int n;
-                    socklen_t len;
-                    sendto(
+                    
+                    int sent = sendto(
                         sockfd,
                         hostname.c_str(),
                         hostname.length(),
                         MSG_CONFIRM,
-                        (const struct sockaddr *)&storage,
-                        sizeof(storage));
-                    printf("Hello message sent.\n");
+                        (const struct sockaddr *)storage,
+                        sizeof(*storage)
+                    );
 
+                    if (sent < 0 ) logexit("sendto");
+
+                    char buffer[BUFSZ];
+                    socklen_t len = sizeof(*storage);
+                    int n;
                     n = recvfrom(
                         sockfd,
                         (char *)buffer,
@@ -131,15 +133,16 @@ int main(int argc, char **argv)
                         &len
                     );
                     buffer[n] = '\0';
-                    printf("Server : %s\n", buffer);
+                    printf("Received : %s\n", buffer);
 
-                    // close(sockfd);
+                    // TODO: verificar resposta.
+                    // Se -1, continuar
+                    // Se IP valido, adicionar entrada na tabela DNS e break
                 }
             }
         }
         else if (command == "link")
         {
-            // todo link
             string ip, porta;
             cin >> ip >> porta;
 
@@ -150,30 +153,13 @@ int main(int argc, char **argv)
             }
 
             int s = socket(storage.ss_family, SOCK_DGRAM, 0);
-            if (s == -1)
+            if (s < 0)
             {
-                logexit("socket");
+                logexit("link socket creation");
             }
-            int enable = 1;
-            if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) != 0)
-            {
-                logexit("setsockopt");
-            }
-
-            struct sockaddr *addr = (struct sockaddr *)(&storage);
-            // bind
-            cout << addr->sa_data << " " << addr->sa_family << " ";
-            if (bind(s, addr, sizeof(storage)) != 0)
-            {
-                logexit("bind");
-            }
-
             auto t_tuple = std::make_tuple(s, &storage);
             connections.push_back(t_tuple);
-            // accept
-            char addrstr[BUFSZ];
-            addrtostr(addr, addrstr, BUFSZ);
-            printf("Listening to %s, waiting for connection..\n", addrstr);
+            cout << "Link created." << endl;
         }
         else
         {
@@ -186,12 +172,12 @@ int main(int argc, char **argv)
     exit(EXIT_SUCCESS);
 }
 
-void *connection_handler(void *params)
+void *connection_handler(void *params) // "SERVER"
 {
     struct thread_p p = *(struct thread_p *)params;
-    int socket_desc, client_sock, c;
-    char buffer[BUFSZ];
-    struct sockaddr_storage server, client;
+    int socket_desc;
+    struct sockaddr_storage server;
+    memset(&server, 0, sizeof(server));
     if (addrparse("127.0.0.1", p.port, &server) != 0)
     {
         logexit("addrparse thread");
@@ -203,11 +189,9 @@ void *connection_handler(void *params)
         printf("Could not create socket");
         logexit("socket thread");
     }
-    puts("Socket created");
-    memset(&server, 0, sizeof(server));
-    memset(&client, 0, sizeof(client));
-    // Bind the socket with the server address
-    struct sockaddr *servaddr = (struct sockaddr *)(&server);
+    printf("Socket created at port %s\n", p.port);
+    
+    struct sockaddr *servaddr = (struct sockaddr *)&server;
     if (bind(socket_desc, servaddr, sizeof(server)) < 0)
     {
         perror("bind failed");
@@ -215,32 +199,39 @@ void *connection_handler(void *params)
     }
     puts("bind done");
 
-    listen(socket_desc, 3);
-    //Accept and incoming connection
-    puts("Waiting for incoming connections...");
-    c = sizeof(struct sockaddr_in);
+    struct sockaddr_storage client;
+    memset(&client, 0, sizeof(client));
+    socklen_t len = sizeof(client);
+    char client_message[BUFSZ];
 
-    client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t *)&c);
-    puts("Connection accepted");
-
-    //Get the socket descriptor
-    size_t read_size;
-    socklen_t len;
-    char client_message[2000];
-
-    //Receive a message from client
-    while ((read_size = recvfrom(socket_desc, (char *)buffer, BUFSZ,
+    puts("Waiting for datagram...");
+    size_t read_size = 0;
+    
+    while ((read_size = recvfrom(socket_desc, (char *)client_message, BUFSZ,
                                  MSG_WAITALL, (struct sockaddr *)&client,
                                  &len)) > 0)
     {
-        //end of string marker
         client_message[read_size] = '\0';
-        printf("Server receive: %s\n", client_message);
+        printf("Server received: %s\n", client_message);
+        auto elemento = p.dns_table->find(client_message);
+        cout << (elemento == p.dns_table->end() ?  "-1" : elemento->second);
 
-        //Send the message back to client
-        write(client_sock, client_message, strlen(client_message));
-
-        //clear the message buffer
+        // TODO: implementar leitura da mensagem segundo estrutura do enunciado
+        // TODO: chamar metodo para verificar se esta tabela de DNS possui entrada
+        const char* response = "oi!";
+        int bytes_sent;
+        bytes_sent = sendto(
+            socket_desc, 
+            (const char *)response, 
+            strlen(response), 
+            MSG_CONFIRM, 
+            (struct sockaddr*)&client,
+            len
+        );
+        if (bytes_sent < 0) {
+            logexit("sendto");
+        }
+        printf("Server sent \"%s\"\n", response);
         memset(client_message, 0, 2000);
     }
 
@@ -256,6 +247,3 @@ void *connection_handler(void *params)
 
     return 0;
 }
-
-// todo: avaliar se precisa criar N threads
-// criar estrutura das mensagens
