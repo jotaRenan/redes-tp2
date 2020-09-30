@@ -84,7 +84,13 @@ int main(int argc, char **argv)
     {
 
         cin >> command;
+        if (command == "test") {
+            for (auto const &con_tuple : connections) {
+                cout << get<0>(con_tuple) << endl;
+                cout << get<1>(con_tuple) << endl;
+            }
 
+        }
         if (command == "add")
         {
             string hostname, ip;
@@ -103,17 +109,24 @@ int main(int argc, char **argv)
             }
             else
             {
+                bool found = false;
                 for (auto const &con_tuple : connections)
                 {
-                    cout << "Buscando externamente\n";
+                    char message[BUFSZ];
+                    memset(message, '\0', BUFSZ);
+                    message[0] = -1;
+                    for (size_t i = 0; i < hostname.length(); i++) {
+                        message[i+1] = hostname.at(i);
+                    }
 
                     int sockfd = std::get<0>(con_tuple);
+                    cout << "Buscando externamente (" << sockfd << ")\n";
                     struct sockaddr_storage *storage = std::get<1>(con_tuple);
                     
                     int sent = sendto(
                         sockfd,
-                        hostname.c_str(),
-                        hostname.length(),
+                        (const char *)message,
+                        strlen(message),
                         MSG_CONFIRM,
                         (const struct sockaddr *)storage,
                         sizeof(*storage)
@@ -135,9 +148,19 @@ int main(int argc, char **argv)
                     buffer[n] = '\0';
                     printf("Received : %s\n", buffer);
 
+                    if (buffer[1] != -1) {
+                        found = true;
+                        string ip = string(buffer).substr(1);
+                        cout << "Found! IP address:" << ip << endl;
+                        dns_table.insert(pair<string, string>(hostname, ip));
+                        break;
+                    }
                     // TODO: verificar resposta.
                     // Se -1, continuar
                     // Se IP valido, adicionar entrada na tabela DNS e break
+                }
+                if (!found) {
+                    cout << "-1";
                 }
             }
         }
@@ -212,13 +235,27 @@ void *connection_handler(void *params) // "SERVER"
                                  &len)) > 0)
     {
         client_message[read_size] = '\0';
-        printf("Server received: %s\n", client_message);
-        auto elemento = p.dns_table->find(client_message);
-        cout << (elemento == p.dns_table->end() ?  "-1" : elemento->second);
+        string str_client_message(client_message);
+
+        string hostname = str_client_message.substr(1);
+        printf("Server received: %s\n", hostname.c_str());
+        auto elemento = p.dns_table->find(hostname);
+        bool found = elemento == p.dns_table->end();
 
         // TODO: implementar leitura da mensagem segundo estrutura do enunciado
         // TODO: chamar metodo para verificar se esta tabela de DNS possui entrada
-        const char* response = "oi!";
+        char response[BUFSZ];
+        memset(response, 0, BUFSZ);
+        response[0] = 2;
+
+        if (found) {
+            response[1] = -1; 
+        } else {
+            for (size_t i = 0; i < elemento->second.length(); i++) {
+                response[i+1] = elemento->second.at(i);
+            }
+        }
+
         int bytes_sent;
         bytes_sent = sendto(
             socket_desc, 
@@ -232,7 +269,9 @@ void *connection_handler(void *params) // "SERVER"
             logexit("sendto");
         }
         printf("Server sent \"%s\"\n", response);
-        memset(client_message, 0, 2000);
+        memset(client_message, 0, BUFSZ);
+        memset(&client, 0, sizeof(client));
+        len = sizeof(client);
     }
 
     if (read_size == (size_t)0)
