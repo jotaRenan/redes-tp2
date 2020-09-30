@@ -24,7 +24,7 @@ struct thread_p
 {
     char *port;
     std::map<std::string, std::string> *dns_table;
-    std::list<std::tuple<int, struct sockaddr_storage *>> *connections;
+    std::list<std::tuple<int, struct sockaddr_storage>> *connections;
 };
 
 void *connection_handler(void *);
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
         usage(argc, argv);
     }
     std::map<std::string, std::string> dns_table = std::map<std::string, std::string>();
-    std::list<std::tuple<int, struct sockaddr_storage *>> connections;
+    std::list<std::tuple<int, struct sockaddr_storage>> connections;
 
     struct thread_p thread_params;
     thread_params.connections = &connections;
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
         if (command == "test") {
             for (auto const &con_tuple : connections) {
                 cout << get<0>(con_tuple) << endl;
-                cout << get<1>(con_tuple) << endl;
+                cout << &(get<1>(con_tuple)) << endl;
             }
 
         }
@@ -121,21 +121,21 @@ int main(int argc, char **argv)
 
                     int sockfd = std::get<0>(con_tuple);
                     cout << "Buscando externamente (" << sockfd << ")\n";
-                    struct sockaddr_storage *storage = std::get<1>(con_tuple);
+                    struct sockaddr_storage storage = std::get<1>(con_tuple);
                     
                     int sent = sendto(
                         sockfd,
                         (const char *)message,
                         strlen(message),
                         MSG_CONFIRM,
-                        (const struct sockaddr *)storage,
-                        sizeof(*storage)
+                        (const struct sockaddr *)&storage,
+                        sizeof(storage)
                     );
 
                     if (sent < 0 ) logexit("sendto");
 
                     char buffer[BUFSZ];
-                    socklen_t len = sizeof(*storage);
+                    socklen_t len = sizeof(storage);
                     int n;
                     n = recvfrom(
                         sockfd,
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
             {
                 logexit("link socket creation");
             }
-            auto t_tuple = std::make_tuple(s, &storage);
+            auto t_tuple = std::make_tuple(s, storage);
             connections.push_back(t_tuple);
             cout << "Link created." << endl;
         }
