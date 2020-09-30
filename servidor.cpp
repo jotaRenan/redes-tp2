@@ -28,27 +28,22 @@ struct thread_p
 };
 
 void *connection_handler(void *);
+void search(
+    list<tuple<int, struct sockaddr_storage>> &connections,
+    map<string, string> &dns_table,
+    string hostname
+);
 
-void add_entry(std::map<std::string, std::string> table, std::string hostname, std::string ip)
-{
-    table.insert(std::pair<std::string, std::string>(hostname, ip));
-}
+string search_neighbours(
+    list<tuple<int, struct sockaddr_storage>> &connections,
+    map<string, string> &dns_table,
+    string hostname
+);
 
-void search_ip(std::string hostname, std::map<std::string, std::string> table, std::string &ip)
-{
-    auto it = table.find(hostname);
-    if (it != table.end())
-    {
-        ip = it->second;
-    }
-    // if (search_ip_other_servers(hostname, ip))
-    // {
-    //     for (auto server : servers)
-    //     {
-    //         server.search_ip(hostname);
-    //     }
-    // }
-}
+void link(
+    list<tuple<int, struct sockaddr_storage>> &connections,
+    string porta
+);
 
 void usage(int argc, char **argv)
 {
@@ -82,114 +77,28 @@ int main(int argc, char **argv)
     string command;
     while (true)
     {
-
         cin >> command;
-        if (command == "test") {
-            for (auto const &con_tuple : connections) {
-                cout << get<0>(con_tuple) << endl;
-                cout << &(get<1>(con_tuple)) << endl;
-            }
 
-        }
         if (command == "add")
         {
             string hostname, ip;
             cin >> hostname >> ip;
             dns_table.insert(std::pair<std::string, std::string>(hostname, ip));
-        }
-        else if (command == "search")
+        } else if (command == "search")
         {
             string hostname;
             cin >> hostname;
-            auto it = dns_table.find(hostname);
-            if (it != dns_table.end())
-            {
-                string ip = it->second;
-                cout << ip;
-            }
-            else
-            {
-                bool found = false;
-                for (auto const &con_tuple : connections)
-                {
-                    char message[BUFSZ];
-                    memset(message, '\0', BUFSZ);
-                    message[0] = -1;
-                    for (size_t i = 0; i < hostname.length(); i++) {
-                        message[i+1] = hostname.at(i);
-                    }
+            search(connections, dns_table, hostname);
 
-                    int sockfd = std::get<0>(con_tuple);
-                    cout << "Buscando externamente (" << sockfd << ")\n";
-                    struct sockaddr_storage storage = std::get<1>(con_tuple);
-                    
-                    int sent = sendto(
-                        sockfd,
-                        (const char *)message,
-                        strlen(message),
-                        MSG_CONFIRM,
-                        (const struct sockaddr *)&storage,
-                        sizeof(storage)
-                    );
-
-                    if (sent < 0 ) logexit("sendto");
-
-                    char buffer[BUFSZ];
-                    socklen_t len = sizeof(storage);
-                    int n;
-                    n = recvfrom(
-                        sockfd,
-                        (char *)buffer,
-                        BUFSZ,
-                        MSG_WAITALL,
-                        (struct sockaddr *)&storage,
-                        &len
-                    );
-                    buffer[n] = '\0';
-                    printf("Received : %s\n", buffer);
-
-                    if (buffer[1] != -1) {
-                        found = true;
-                        string ip = string(buffer).substr(1);
-                        cout << "Found! IP address:" << ip << endl;
-                        dns_table.insert(pair<string, string>(hostname, ip));
-                        break;
-                    }
-                    // TODO: verificar resposta.
-                    // Se -1, continuar
-                    // Se IP valido, adicionar entrada na tabela DNS e break
-                }
-                if (!found) {
-                    cout << "-1";
-                }
-            }
-        }
-        else if (command == "link")
+        } else if (command == "link")
         {
-            string ip, porta;
-            cin >> ip >> porta;
-
-            struct sockaddr_storage storage;
-            if (server_sockaddr_init(IP_VERSION, porta.c_str(), &storage) != 0)
-            {
-                usage(argc, argv);
-            }
-
-            int s = socket(storage.ss_family, SOCK_DGRAM, 0);
-            if (s < 0)
-            {
-                logexit("link socket creation");
-            }
-            auto t_tuple = std::make_tuple(s, storage);
-            connections.push_back(t_tuple);
+            string ip, port;
+            cin >> ip >> port;
+            link(connections, port);            
             cout << "Link created." << endl;
-        }
-        else
+        } else
         {
-            if (argc < MIN_ARGC)
-            {
-                usage(argc, argv);
-            }
+            usage(argc, argv);
         }
     }
     exit(EXIT_SUCCESS);
@@ -240,7 +149,7 @@ void *connection_handler(void *params) // "SERVER"
         string hostname = str_client_message.substr(1);
         printf("Server received: %s\n", hostname.c_str());
         auto elemento = p.dns_table->find(hostname);
-        bool found = elemento == p.dns_table->end();
+        bool found = elemento != p.dns_table->end();
 
         // TODO: implementar leitura da mensagem segundo estrutura do enunciado
         // TODO: chamar metodo para verificar se esta tabela de DNS possui entrada
@@ -249,15 +158,21 @@ void *connection_handler(void *params) // "SERVER"
         response[0] = 2;
 
         if (found) {
-            response[1] = -1; 
-        } else {
             for (size_t i = 0; i < elemento->second.length(); i++) {
                 response[i+1] = elemento->second.at(i);
             }
+        } else {
+            string result = search_neighbours(*p.connections, *p.dns_table, hostname);
+            if (result.empty()) {
+                response[1] = -1;
+            } else {
+                for (size_t i = 0; i < result.length(); i++) {
+                    response[i+1] = result.at(i);
+                }
+            }
         }
 
-        int bytes_sent;
-        bytes_sent = sendto(
+        int bytes_sent = sendto(
             socket_desc, 
             (const char *)response, 
             strlen(response), 
@@ -285,4 +200,82 @@ void *connection_handler(void *params) // "SERVER"
     }
 
     return 0;
+}
+
+void search(
+    list<tuple<int, struct sockaddr_storage>> &connections,
+    map<string, string> &dns_table,
+    string hostname
+) {
+    auto it = dns_table.find(hostname);
+    if (it != dns_table.end())
+    {
+        string ip = it->second;
+        cout << ip;
+    }
+    else
+    {
+        search_neighbours(connections, dns_table, hostname);
+    }
+}
+
+string search_neighbours(
+    list<tuple<int, struct sockaddr_storage>> &connections,
+    map<string, string> &dns_table,
+    string hostname
+) {
+    for (auto const &con_tuple : connections)
+    {
+        char message[BUFSZ];
+        memset(message, 0, BUFSZ);
+        message[0] = -1;
+        for (size_t i = 0; i < hostname.length(); i++) {
+            message[i+1] = hostname.at(i);
+        }
+
+        int sockfd = std::get<0>(con_tuple);
+        cout << "Buscando externamente (" << sockfd << ")\n";
+        struct sockaddr_storage storage = std::get<1>(con_tuple);
+        
+        int sent = sendto(sockfd, (const char *)message, strlen(message), MSG_CONFIRM, (const struct sockaddr *)&storage, sizeof(storage));
+
+        if (sent < 0 ) logexit("sendto");
+
+        char buffer[BUFSZ];
+        socklen_t len = sizeof(storage);
+        int n = recvfrom(sockfd, (char *)buffer, BUFSZ, MSG_WAITALL, (struct sockaddr *)&storage, &len);
+        buffer[n] = '\0';
+        printf("Received : %s\n", buffer);
+
+        if (buffer[1] != -1) {
+            string ip = string(buffer).substr(1);
+            cout << "Found! IP address:" << ip << endl;
+            dns_table.insert(pair<string, string>(hostname, ip));
+            return ip;
+        }
+        // TODO: verificar resposta.
+        // Se -1, continuar
+        // Se IP valido, adicionar entrada na tabela DNS e break
+    }
+    cout << "Not found" << endl;
+    return "";
+}
+
+void link(
+    list<tuple<int, struct sockaddr_storage>> &connections,
+    string port
+) {
+    struct sockaddr_storage storage;
+    if (server_sockaddr_init(IP_VERSION, port.c_str(), &storage) != 0)
+    {
+        logexit("server_sockaddr_init");
+    }
+
+    int s = socket(storage.ss_family, SOCK_DGRAM, 0);
+    if (s < 0)
+    {
+        logexit("link socket creation");
+    }
+    auto t_tuple = std::make_tuple(s, storage);
+    connections.push_back(t_tuple);
 }
