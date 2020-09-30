@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <inttypes.h>
 #include <arpa/inet.h>
+#include "utils.h"
 
 void logexit(const char *msg)
 {
@@ -114,4 +115,8 @@ int server_sockaddr_init(const char *proto, const char *portstr, struct sockaddr
     {
         return -1;
     }
+}
+
+const char* get_loopback_address() {
+    return strcmp(IP_VERSION,"v4") == 0 ? V4_LOOP : V6_LOOP;
 }
