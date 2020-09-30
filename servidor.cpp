@@ -42,6 +42,7 @@ string search_neighbours(
 
 void link(
     list<tuple<int, struct sockaddr_storage>> &connections,
+    string ip,
     string porta
 );
 
@@ -94,7 +95,7 @@ int main(int argc, char **argv)
         {
             string ip, port;
             cin >> ip >> port;
-            link(connections, port);            
+            link(connections, ip, port);            
             cout << "Link created." << endl;
         } else
         {
@@ -110,7 +111,7 @@ void *connection_handler(void *params) // "SERVER"
     int socket_desc;
     struct sockaddr_storage server;
     memset(&server, 0, sizeof(server));
-    if (addrparse("127.0.0.1", p.port, &server) != 0)
+    if (addrparse(get_loopback_address(), p.port, &server) != 0)
     {
         logexit("addrparse thread");
     }
@@ -151,8 +152,6 @@ void *connection_handler(void *params) // "SERVER"
         auto elemento = p.dns_table->find(hostname);
         bool found = elemento != p.dns_table->end();
 
-        // TODO: implementar leitura da mensagem segundo estrutura do enunciado
-        // TODO: chamar metodo para verificar se esta tabela de DNS possui entrada
         char response[BUFSZ];
         memset(response, 0, BUFSZ);
         response[0] = 2;
@@ -253,9 +252,6 @@ string search_neighbours(
             dns_table.insert(pair<string, string>(hostname, ip));
             return ip;
         }
-        // TODO: verificar resposta.
-        // Se -1, continuar
-        // Se IP valido, adicionar entrada na tabela DNS e break
     }
     cout << "Not found" << endl;
     return "";
@@ -263,10 +259,11 @@ string search_neighbours(
 
 void link(
     list<tuple<int, struct sockaddr_storage>> &connections,
+    string ip,
     string port
 ) {
     struct sockaddr_storage storage;
-    if (server_sockaddr_init(IP_VERSION, port.c_str(), &storage) != 0)
+    if (addrparse(ip.c_str(), port.c_str(), &storage))
     {
         logexit("server_sockaddr_init");
     }
