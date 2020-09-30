@@ -84,7 +84,7 @@ int main(int argc, char **argv)
         {
             string hostname, ip;
             cin >> hostname >> ip;
-            dns_table.insert(std::pair<std::string, std::string>(hostname, ip));
+            dns_table[hostname] = ip;
         } else if (command == "search")
         {
             string hostname;
@@ -249,7 +249,7 @@ string search_neighbours(
         if (buffer[1] != -1) {
             string ip = string(buffer).substr(1);
             cout << "Found! IP address:" << ip << endl;
-            dns_table.insert(pair<string, string>(hostname, ip));
+            dns_table[hostname] = ip;
             return ip;
         }
     }
