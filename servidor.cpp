@@ -123,7 +123,12 @@ void *connection_handler(void *params) // "SERVER"
         logexit("socket thread");
     }
     printf("Socket created at port %s\n", p.port);
-    
+
+    int v6OnlyEnabled = 0;  // we want v6-only mode disabled, which is to say we want v6-to-v4 compatibility
+    if (setsockopt(socket_desc, IPPROTO_IPV6, IPV6_V6ONLY, &v6OnlyEnabled, sizeof(v6OnlyEnabled)) != 0) {
+        perror("setsockopt");
+    }
+
     struct sockaddr *servaddr = (struct sockaddr *)&server;
     if (bind(socket_desc, servaddr, sizeof(server)) < 0)
     {
@@ -273,6 +278,12 @@ void link(
     {
         logexit("link socket creation");
     }
+
+    int v6OnlyEnabled = 0;  // we want v6-only mode disabled, which is to say we want v6-to-v4 compatibility
+    if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &v6OnlyEnabled, sizeof(v6OnlyEnabled)) != 0) {
+        perror("setsockopt");
+    }
+
     auto t_tuple = std::make_tuple(s, storage);
     connections.push_back(t_tuple);
 }
