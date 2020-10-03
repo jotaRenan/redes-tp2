@@ -9,7 +9,7 @@ InputReader::InputReader()
 string InputReader::read()
 {
     string result;
-    if (this->read_from_file)
+    if (this->read_from_file && !this->commands.empty())
     {
         result = this->commands.front();
         this->commands.pop();

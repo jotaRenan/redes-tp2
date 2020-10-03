@@ -23,11 +23,14 @@
 #include <fstream>
 #include <stdbool.h>
 #include <string.h>
-#include <pthread.h> //for threading
+#include <pthread.h>
 
 #define MIN_ARGC 2
 
 using namespace std;
+
+int read_command(InputReader &reader, std::map<std::string, std::string> &dns_table,
+                 std::list<std::tuple<int, struct sockaddr_storage>> &connections);
 
 void usage(int argc, char **argv)
 {
@@ -64,42 +67,49 @@ int main(int argc, char **argv)
         reader.read_file_to_buffer(argv[2]);
     }
 
-    string command;
-    while (!reader.buffer_is_empty())
+    while (true)
     {
-        command = reader.read();
-        if (command == "add")
+        int success = read_command(reader, dns_table, connections);
+        if (success < 0)
         {
-            string hostname = reader.read();
-            string ip = reader.read();
-            dns_table[hostname] = ip;
-        }
-        else if (command == "search")
-        {
-            string hostname = reader.read();
-            search(connections, dns_table, hostname);
-        }
-        else if (command == "link")
-        {
-            string ip = reader.read();
-            string port = reader.read();
-            if (link(connections, ip, port) < 0)
-            {
-                cout << "Invalid address." << endl;
-                continue;
-            }
-            cout << "Link created." << endl;
-        }
-        else
-        {
-            cout << "Failed at: " << command << endl;
             usage(argc, argv);
         }
     }
-    while (true)
-    {
-    }
     exit(EXIT_SUCCESS);
+}
+
+int read_command(InputReader &reader, std::map<std::string, std::string> &dns_table,
+                 std::list<std::tuple<int, struct sockaddr_storage>> &connections)
+{
+    string command = reader.read();
+    if (command == "add")
+    {
+        string hostname = reader.read();
+        string ip = reader.read();
+        dns_table[hostname] = ip;
+    }
+    else if (command == "search")
+    {
+        string hostname = reader.read();
+        search(connections, dns_table, hostname);
+    }
+    else if (command == "link")
+    {
+        string ip = reader.read();
+        string port = reader.read();
+        if (link(connections, ip, port) < 0)
+        {
+            cout << "Invalid address." << endl;
+            return 0;
+        }
+        cout << "Link created." << endl;
+    }
+    else
+    {
+        cout << "Failed at: " << command << endl;
+        return -1;
+    }
+    return 0;
 }
 
 #endif
