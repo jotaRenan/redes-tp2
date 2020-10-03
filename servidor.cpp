@@ -59,9 +59,10 @@ int main(int argc, char **argv)
     }
 
     InputReader reader;
-    if (argc == 3) {
+    if (argc == 3)
+    {
         reader.read_file_to_buffer(argv[2]);
-    }    
+    }
 
     string command;
     while (!reader.buffer_is_empty())
@@ -72,27 +73,32 @@ int main(int argc, char **argv)
             string hostname = reader.read();
             string ip = reader.read();
             dns_table[hostname] = ip;
-        } else if (command == "search")
+        }
+        else if (command == "search")
         {
             string hostname = reader.read();
             search(connections, dns_table, hostname);
-
-        } else if (command == "link")
+        }
+        else if (command == "link")
         {
             string ip = reader.read();
             string port = reader.read();
-            if (link(connections, ip, port) < 0) {
+            if (link(connections, ip, port) < 0)
+            {
                 cout << "Invalid address." << endl;
                 continue;
-            }            
+            }
             cout << "Link created." << endl;
-        } else
+        }
+        else
         {
             cout << "Failed at: " << command << endl;
             usage(argc, argv);
         }
     }
-    while(true) {}
+    while (true)
+    {
+    }
     exit(EXIT_SUCCESS);
 }
 

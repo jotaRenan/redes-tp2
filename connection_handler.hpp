@@ -1,12 +1,11 @@
 #ifndef CONNECTION_HANDLER
 #define CONNECTION_HANDLER
-# include <map>
-# include <list>
-# include <tuple>
+#include <map>
+#include <list>
+#include <tuple>
 
 void *connection_handler(void *);
 int create_handler_socket(char *port);
-
 
 struct thread_p
 {

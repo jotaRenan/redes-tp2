@@ -43,7 +43,8 @@ void InputReader::read_file_to_buffer(const char *file_path)
 
 bool InputReader::buffer_is_empty()
 {
-    if (this->read_from_file) {
+    if (this->read_from_file)
+    {
         return this->commands.empty();
     }
     return false;

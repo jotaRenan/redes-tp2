@@ -17,7 +17,7 @@ void *connection_handler(void *params) // "SERVER"
     memset(&client, 0, sizeof(client));
 
     puts("Waiting for datagram...");
-    
+
     char client_message[BUFSZ];
     socklen_t len = sizeof(client);
     size_t read_size = 0;
@@ -37,24 +37,33 @@ void *connection_handler(void *params) // "SERVER"
         memset(response, 0, BUFSZ);
         response[0] = 2;
 
-        if (found) {
-            for (size_t i = 0; i < elemento->second.length(); i++) {
-                response[i+1] = elemento->second.at(i);
+        if (found)
+        {
+            for (size_t i = 0; i < elemento->second.length(); i++)
+            {
+                response[i + 1] = elemento->second.at(i);
             }
-        } else {
+        }
+        else
+        {
             string result = search_neighbours(*p.connections, *p.dns_table, hostname);
-            if (result.empty()) {
+            if (result.empty())
+            {
                 response[1] = -1;
-            } else {
-                for (size_t i = 0; i < result.length(); i++) {
-                    response[i+1] = result.at(i);
+            }
+            else
+            {
+                for (size_t i = 0; i < result.length(); i++)
+                {
+                    response[i + 1] = result.at(i);
                 }
             }
         }
 
         int bytes_sent = sendto(socket_desc, (const char *)response, strlen(response),
-                                    MSG_CONFIRM, (struct sockaddr*)&client, len);
-        if (bytes_sent < 0) {
+                                MSG_CONFIRM, (struct sockaddr *)&client, len);
+        if (bytes_sent < 0)
+        {
             logexit("sendto");
         }
         printf("Server sent \"%s\"\n", response);
@@ -76,11 +85,13 @@ void *connection_handler(void *params) // "SERVER"
     return 0;
 }
 
-int create_handler_socket(char *port) {
+int create_handler_socket(char *port)
+{
     int socket_desc;
     struct sockaddr_storage server;
     memset(&server, 0, sizeof(server));
-    if (server_sockaddr_init(IP_VERSION, port, &server) < 0) {
+    if (server_sockaddr_init(IP_VERSION, port, &server) < 0)
+    {
         logexit("init");
     }
 
