@@ -39,4 +39,4 @@ all:
 	g++ -std=c++11 -Wall -c linker.cpp
 	g++ -std=c++11 -Wall -c searcher.cpp
 	g++ -std=c++11 -Wall -c connection_handler.cpp
-	g++ -std=c++11 -pthread -Wall servidor.cpp connection_handler.o input_reader.o searcher.o linker.o utils.o -o servidor
+	g++ -std=c++11 -pthread -Wall servidor_dns.cpp connection_handler.o input_reader.o searcher.o linker.o utils.o -o servidor_dns
