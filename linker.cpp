@@ -32,6 +32,7 @@ int create_link_socket(string ip, string port, int &s, struct sockaddr_storage &
     tv.tv_usec = 100000;
     if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         perror("Error");
+        return -1;
     }
     return 0;
 }
