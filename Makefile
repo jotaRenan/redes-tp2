@@ -35,6 +35,7 @@
 
 all:
 	g++ -std=c++11 -Wall -c utils.c
+	g++ -std=c++11 -Wall -c input_reader.cpp
 	# gcc -Wall -c forca.c
 	# gcc -Wall cliente.c utils.o forca.o -o cliente
-	g++ -std=c++11 -pthread -Wall servidor.cpp utils.o -o servidor
+	g++ -std=c++11 -pthread -Wall servidor.cpp input_reader.o utils.o -o servidor
