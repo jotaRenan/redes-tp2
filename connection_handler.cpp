@@ -29,7 +29,6 @@ void *connection_handler(void *params) // "SERVER"
         string str_client_message(client_message);
 
         string hostname = str_client_message.substr(1);
-        printf("Server received: %s\n", hostname.c_str());
         auto elemento = p.dns_table->find(hostname);
         bool found = elemento != p.dns_table->end();
 
@@ -46,8 +45,8 @@ void *connection_handler(void *params) // "SERVER"
         }
         else
         {
-            string result = search_neighbours(*p.connections, *p.dns_table, hostname);
-            if (result.empty())
+            string result = search_neighbours(*p.connections, hostname);
+            if (result == "-1")
             {
                 response[1] = -1;
             }
@@ -66,7 +65,6 @@ void *connection_handler(void *params) // "SERVER"
         {
             logexit("sendto");
         }
-        printf("Server sent \"%s\"\n", response);
         memset(client_message, 0, BUFSZ);
         memset(&client, 0, sizeof(client));
         len = sizeof(client);
@@ -108,6 +106,5 @@ int create_handler_socket(char *port)
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
-    puts("bind done");
     return socket_desc;
 }

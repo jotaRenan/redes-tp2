@@ -8,7 +8,7 @@
 
 using namespace std;
 
-void search(
+string search(
     list<tuple<int, struct sockaddr_storage>> &connections,
     map<string, string> &dns_table,
     string hostname
@@ -16,7 +16,6 @@ void search(
 
 string search_neighbours(
     list<tuple<int, struct sockaddr_storage>> &connections,
-    map<string, string> &dns_table,
     string hostname
 );
 #endif

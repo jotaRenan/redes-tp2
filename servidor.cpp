@@ -91,7 +91,9 @@ int read_command(InputReader &reader, std::map<std::string, std::string> &dns_ta
     else if (command == "search")
     {
         string hostname = reader.read();
-        search(connections, dns_table, hostname);
+        string ip = search(connections, dns_table, hostname);
+        cout << (ip.empty() ? "-1" : ip) << endl;
+
     }
     else if (command == "link")
     {
@@ -106,7 +108,6 @@ int read_command(InputReader &reader, std::map<std::string, std::string> &dns_ta
     }
     else
     {
-        cout << "Failed at: " << command << endl;
         return -1;
     }
     return 0;

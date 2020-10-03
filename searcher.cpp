@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string.h>
 
-void search(
+string search(
     list<tuple<int, struct sockaddr_storage>> &connections,
     map<string, string> &dns_table,
     string hostname)
@@ -11,18 +11,16 @@ void search(
     auto it = dns_table.find(hostname);
     if (it != dns_table.end())
     {
-        string ip = it->second;
-        cout << ip;
+        return it->second;
     }
     else
     {
-        search_neighbours(connections, dns_table, hostname);
+        return search_neighbours(connections, hostname);
     }
 }
 
 string search_neighbours(
     list<tuple<int, struct sockaddr_storage>> &connections,
-    map<string, string> &dns_table,
     string hostname)
 {
     for (auto const &con_tuple : connections)
@@ -47,16 +45,12 @@ string search_neighbours(
         socklen_t len = sizeof(storage);
         int n = recvfrom(sockfd, (char *)buffer, BUFSZ, MSG_WAITALL, (struct sockaddr *)&storage, &len);
         buffer[n] = '\0';
-        printf("Received : %s\n", buffer);
 
         if (buffer[0] == 2 && buffer[1] != -1)
         {
             string ip = string(buffer).substr(1);
-            cout << "Found! IP address:" << ip << endl;
-            dns_table[hostname] = ip;
             return ip;
         }
     }
-    cout << "Not found" << endl;
     return "";
 }
