@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     pthread_t thread_id;
     if (pthread_create(&thread_id, NULL, connection_handler, (void *)&thread_params) < 0)
     {
-        perror("could not creeate thread");
+        perror("Error creating thread");
         return -1;
     }
 
