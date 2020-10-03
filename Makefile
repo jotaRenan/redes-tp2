@@ -38,6 +38,5 @@ all:
 	g++ -std=c++11 -Wall -c input_reader.cpp
 	g++ -std=c++11 -Wall -c linker.cpp
 	g++ -std=c++11 -Wall -c searcher.cpp
-	# gcc -Wall -c forca.c
-	# gcc -Wall cliente.c utils.o forca.o -o cliente
-	g++ -std=c++11 -pthread -Wall servidor.cpp input_reader.o searcher.o linker.o utils.o -o servidor
+	g++ -std=c++11 -Wall -c connection_handler.cpp
+	g++ -std=c++11 -pthread -Wall servidor.cpp connection_handler.o input_reader.o searcher.o linker.o utils.o -o servidor
