@@ -47,7 +47,7 @@ string search_neighbours(
     string hostname
 );
 
-void link(
+int link(
     list<tuple<int, struct sockaddr_storage>> &connections,
     string ip,
     string porta
@@ -105,7 +105,10 @@ int main(int argc, char **argv)
         {
             string ip = reader.read();
             string port = reader.read();
-            link(connections, ip, port);            
+            if (link(connections, ip, port) < 0) {
+                cout << "Invalid address." << endl;
+                continue;
+            }            
             cout << "Link created." << endl;
         } else
         {
@@ -274,21 +277,21 @@ string search_neighbours(
     return "";
 }
 
-void link(
+int link(
     list<tuple<int, struct sockaddr_storage>> &connections,
     string ip,
     string port
 ) {
     struct sockaddr_storage storage;
-    if (addrparse(ip.c_str(), port.c_str(), &storage))
+    if (addrparse(ip.c_str(), port.c_str(), &storage) < 0)
     {
-        logexit("server_sockaddr_init");
+        return -1;
     }
 
     int s = socket(storage.ss_family, SOCK_DGRAM, 0);
     if (s < 0)
     {
-        logexit("link socket creation");
+        return -1;
     }
 
     int v6OnlyEnabled = 0;  // we want v6-only mode disabled, which is to say we want v6-to-v4 compatibility
@@ -298,6 +301,7 @@ void link(
 
     auto t_tuple = std::make_tuple(s, storage);
     connections.push_back(t_tuple);
+    return 0;
 }
 
 #endif
