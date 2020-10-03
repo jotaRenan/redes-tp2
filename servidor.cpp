@@ -52,6 +52,7 @@ int link(
     string ip,
     string porta
 );
+int create_link_socket(string ip, string port, int &s, struct sockaddr_storage &storage);
 
 void usage(int argc, char **argv)
 {
@@ -126,9 +127,8 @@ void *connection_handler(void *params) // "SERVER"
     int socket_desc;
     struct sockaddr_storage server;
     memset(&server, 0, sizeof(server));
-    if (addrparse(get_loopback_address(), p.port, &server) != 0)
-    {
-        logexit("addrparse thread");
+    if (server_sockaddr_init(IP_VERSION, p.port, &server) < 0) {
+        logexit("init");
     }
 
     socket_desc = socket(server.ss_family, SOCK_DGRAM, 0);
@@ -138,11 +138,6 @@ void *connection_handler(void *params) // "SERVER"
         logexit("socket thread");
     }
     printf("Socket created at port %s\n", p.port);
-
-    int v6OnlyEnabled = 0;  // we want v6-only mode disabled, which is to say we want v6-to-v4 compatibility
-    if (setsockopt(socket_desc, IPPROTO_IPV6, IPV6_V6ONLY, &v6OnlyEnabled, sizeof(v6OnlyEnabled)) != 0) {
-        perror("setsockopt");
-    }
 
     struct sockaddr *servaddr = (struct sockaddr *)&server;
     if (bind(socket_desc, servaddr, sizeof(server)) < 0)
@@ -282,31 +277,34 @@ int link(
     string ip,
     string port
 ) {
+    int s;
     struct sockaddr_storage storage;
+    if (create_link_socket(ip, port, s, storage) < 0) {
+        return -1;    
+    }
+    auto t_tuple = std::make_tuple(s, storage);
+    connections.push_back(t_tuple);
+    return 0;
+}
+
+int create_link_socket(string ip, string port, int &s, struct sockaddr_storage &storage) {
     if (addrparse(ip.c_str(), port.c_str(), &storage) < 0)
     {
         return -1;
     }
 
-    int s = socket(storage.ss_family, SOCK_DGRAM, 0);
+    s = socket(storage.ss_family, SOCK_DGRAM, 0);
     if (s < 0)
     {
         return -1;
     }
 
-    int v6OnlyEnabled = 0;  // we want v6-only mode disabled, which is to say we want v6-to-v4 compatibility
-    if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &v6OnlyEnabled, sizeof(v6OnlyEnabled)) != 0) {
-        perror("setsockopt");
-    }
     struct timeval tv;
     tv.tv_sec = 0;
     tv.tv_usec = 100000;
     if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         perror("Error");
     }
-
-    auto t_tuple = std::make_tuple(s, storage);
-    connections.push_back(t_tuple);
     return 0;
 }
 
