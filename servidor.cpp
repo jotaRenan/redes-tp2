@@ -266,7 +266,7 @@ string search_neighbours(
         buffer[n] = '\0';
         printf("Received : %s\n", buffer);
 
-        if (buffer[1] != -1) {
+        if (buffer[0] == 2 && buffer[1] != -1) {
             string ip = string(buffer).substr(1);
             cout << "Found! IP address:" << ip << endl;
             dns_table[hostname] = ip;
@@ -297,6 +297,12 @@ int link(
     int v6OnlyEnabled = 0;  // we want v6-only mode disabled, which is to say we want v6-to-v4 compatibility
     if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &v6OnlyEnabled, sizeof(v6OnlyEnabled)) != 0) {
         perror("setsockopt");
+    }
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 100000;
+    if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        perror("Error");
     }
 
     auto t_tuple = std::make_tuple(s, storage);
